@@ -9,12 +9,12 @@ public class LinkedListTabulatedFunction implements TabulatedFunction{
     private FunctionNode lastHistoryNode;
     private int indexOfLastHistoryNode;
 
-    public LinkedListTabulatedFunction(){
+    /*public LinkedListTabulatedFunction(){
         head = new FunctionNode();
         lastHistoryNode = head;
         indexOfLastHistoryNode = 0;
         countPoints = 0;
-    }
+    }*/
 
     public LinkedListTabulatedFunction(FunctionPoint[] points) throws IllegalArgumentException {
         if (points.length < 2){
@@ -306,7 +306,7 @@ public class LinkedListTabulatedFunction implements TabulatedFunction{
         };
     }
 
-    public class LinkedListTabulatedFunctionFactory implements TabulatedFunctionFactory{
+    public static class LinkedListTabulatedFunctionFactory implements TabulatedFunctionFactory{
         @Override
         public TabulatedFunction createTabulatedFunction(FunctionPoint[] points) {
             return new LinkedListTabulatedFunction(points);

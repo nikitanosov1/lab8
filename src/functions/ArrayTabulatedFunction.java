@@ -9,10 +9,10 @@ public class ArrayTabulatedFunction implements TabulatedFunction{
     protected FunctionPoint[] points;
     protected int countPoints;
 
-    public ArrayTabulatedFunction(){
+    /*public ArrayTabulatedFunction(){
         points = null;
         countPoints = 0;
-    }
+    }*/
 
     public ArrayTabulatedFunction(FunctionPoint[] points) throws IllegalArgumentException {
         if (points.length < 2){

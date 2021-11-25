@@ -1,6 +1,7 @@
 package functions;
 
 import java.io.*;
+import java.lang.reflect.Constructor;
 
 public abstract class TabulatedFunctions {
     private static TabulatedFunctionFactory tabulatedFunctionFactory = new ArrayTabulatedFunction.ArrayTabulatedFunctionFactory();
@@ -21,11 +22,70 @@ public abstract class TabulatedFunctions {
         return tabulatedFunctionFactory.createTabulatedFunction(leftX, rightX, values);
     }
 
+    public static TabulatedFunction createTabulatedFunction(Class<? extends TabulatedFunction> classFunction, FunctionPoint[] points){
+        Constructor[] constructors = classFunction.getConstructors();
+        try {
+            for (Constructor<?> constructor : constructors) {
+                Class[] types = constructor.getParameterTypes();
+                if (types.length == 1) {
+                    return (TabulatedFunction) constructor.newInstance(new Object[] {points});
+                }
+            }
+        }
+        catch (Exception e){
+            throw new IllegalArgumentException(e);
+        }
+        throw new IllegalArgumentException();
+    }
+
+    public static TabulatedFunction createTabulatedFunction(Class<? extends TabulatedFunction> classFunction, double leftX, double rightX, int pointsCount){
+        Constructor[] constructors = classFunction.getConstructors();
+        try {
+            for (Constructor<?> constructor : constructors) {
+                Class[] types = constructor.getParameterTypes();
+                if (types.length == 3 && types[2].equals(Integer.TYPE)) {
+                    return (TabulatedFunction) constructor.newInstance(leftX, rightX, pointsCount);
+                }
+            }
+        }
+        catch (Exception e){
+            throw new IllegalArgumentException(e);
+        }
+        throw new IllegalArgumentException();
+    }
+
+    public static TabulatedFunction createTabulatedFunction(Class<? extends TabulatedFunction> classFunction, double leftX, double rightX, double[] values){
+        Constructor[] constructors = classFunction.getConstructors();
+        try {
+            for (Constructor<?> constructor : constructors) {
+                Class[] types = constructor.getParameterTypes();
+                if (types.length == 3 &&  types[2].equals(values.getClass())) {
+                    return (TabulatedFunction) constructor.newInstance(leftX, rightX, values);
+                }
+            }
+        }
+        catch (Exception e){
+            throw new IllegalArgumentException(e);
+        }
+        throw new IllegalArgumentException();
+    }
+
     public static TabulatedFunction tabulate(Function function, double leftX, double rightX, int pointsCount) throws IllegalArgumentException {
         if ((function.getLeftDomainBorder() > leftX) || (function.getRightDomainBorder() < rightX)) {
             throw new IllegalArgumentException();
         }
-        TabulatedFunction tabulatedFunction = tabulatedFunctionFactory.createTabulatedFunction(leftX, rightX, pointsCount);
+        TabulatedFunction tabulatedFunction = createTabulatedFunction(leftX, rightX, pointsCount);
+        for (int i = 0; i < pointsCount; i++) {
+            tabulatedFunction.setPointY(i, function.getFunctionValue(tabulatedFunction.getPointX(i)));
+        }
+        return tabulatedFunction;
+    }
+
+    public static TabulatedFunction tabulate(Class<? extends TabulatedFunction> classFunction, Function function, double leftX, double rightX, int pointsCount) throws IllegalArgumentException {
+        if ((function.getLeftDomainBorder() > leftX) || (function.getRightDomainBorder() < rightX)) {
+            throw new IllegalArgumentException();
+        }
+        TabulatedFunction tabulatedFunction = createTabulatedFunction(classFunction, leftX, rightX, pointsCount);
         for (int i = 0; i < pointsCount; i++) {
             tabulatedFunction.setPointY(i, function.getFunctionValue(tabulatedFunction.getPointX(i)));
         }
@@ -46,21 +106,35 @@ public abstract class TabulatedFunctions {
     }
 
     public static TabulatedFunction inputTabulatedFunction(InputStream in){
-        ArrayTabulatedFunction arrayTabulatedFunction = new ArrayTabulatedFunction();
+        TabulatedFunction tabulatedFunction = null;
         try (DataInputStream dataInputStream = new DataInputStream(in)){
             int countPoints = dataInputStream.readInt();
+            FunctionPoint[] arrayFunctionPoint = new FunctionPoint[countPoints];
             for (int i = 0; i < countPoints; i++) {
-                FunctionPoint functionPoint = new FunctionPoint();
-                functionPoint.setX(dataInputStream.readDouble());
-                functionPoint.setY(dataInputStream.readDouble());
-                arrayTabulatedFunction.addPoint(functionPoint);
+                arrayFunctionPoint[i].setX(dataInputStream.readDouble());
+                arrayFunctionPoint[i].setY(dataInputStream.readDouble());
             }
+            tabulatedFunction = createTabulatedFunction(arrayFunctionPoint);
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (InappropriateFunctionPointException e) {
+        }
+        return tabulatedFunction;
+    }
+
+    public static TabulatedFunction inputTabulatedFunction(Class<? extends TabulatedFunction> classFunction, InputStream in){
+        TabulatedFunction tabulatedFunction = null;
+        try (DataInputStream dataInputStream = new DataInputStream(in)){
+            int countPoints = dataInputStream.readInt();
+            FunctionPoint[] arrayFunctionPoint = new FunctionPoint[countPoints];
+            for (int i = 0; i < countPoints; i++) {
+                arrayFunctionPoint[i].setX(dataInputStream.readDouble());
+                arrayFunctionPoint[i].setY(dataInputStream.readDouble());
+            }
+            tabulatedFunction = createTabulatedFunction(classFunction, arrayFunctionPoint);
+        } catch (IOException e) {
             e.printStackTrace();
         }
-        return arrayTabulatedFunction;
+        return tabulatedFunction;
     }
 
     public static void writeTabulatedFunction(TabulatedFunction function, Writer out){
@@ -77,26 +151,44 @@ public abstract class TabulatedFunctions {
     }
 
     public static TabulatedFunction readTabulatedFunction(Reader in){
-        ArrayTabulatedFunction arrayTabulatedFunction = new ArrayTabulatedFunction();
         StreamTokenizer streamTokenizer = new StreamTokenizer(in);
+        TabulatedFunction tabulatedFunction = null;
         try {
             streamTokenizer.nextToken();
             int countsPoints = (int) streamTokenizer.nval;
-            double x;
-            double y;
+            FunctionPoint[] arrayFunctionPoint = new FunctionPoint[countsPoints];
             for (int i = 0; i < countsPoints; i++) {
                 FunctionPoint functionPoint = new FunctionPoint();
                 streamTokenizer.nextToken();
-                x = streamTokenizer.nval;
+                arrayFunctionPoint[i].setX(streamTokenizer.nval);
                 streamTokenizer.nextToken();
-                y = streamTokenizer.nval;
-                arrayTabulatedFunction.addPoint(new FunctionPoint(x, y));
+                arrayFunctionPoint[i].setY(streamTokenizer.nval);
             }
+            tabulatedFunction = createTabulatedFunction(arrayFunctionPoint);
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (InappropriateFunctionPointException e) {
+        }
+        return tabulatedFunction;
+    }
+
+    public static TabulatedFunction readTabulatedFunction(Class<? extends TabulatedFunction> classFunction, Reader in){
+        StreamTokenizer streamTokenizer = new StreamTokenizer(in);
+        TabulatedFunction tabulatedFunction = null;
+        try {
+            streamTokenizer.nextToken();
+            int countsPoints = (int) streamTokenizer.nval;
+            FunctionPoint[] arrayFunctionPoint = new FunctionPoint[countsPoints];
+            for (int i = 0; i < countsPoints; i++) {
+                FunctionPoint functionPoint = new FunctionPoint();
+                streamTokenizer.nextToken();
+                arrayFunctionPoint[i].setX(streamTokenizer.nval);
+                streamTokenizer.nextToken();
+                arrayFunctionPoint[i].setY(streamTokenizer.nval);
+            }
+            tabulatedFunction = createTabulatedFunction(classFunction, arrayFunctionPoint);
+        } catch (IOException e) {
             e.printStackTrace();
         }
-        return arrayTabulatedFunction;
+        return tabulatedFunction;
     }
 }
